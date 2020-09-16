@@ -1,0 +1,105 @@
+//Library
+using System;
+using System.Text;
+using System.Collections.Generic;
+using System.Linq;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
+using System.Drawing;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Selenium;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Remote;
+using OpenQA.Selenium.Support.UI;
+using OpenQA.Selenium.Support.Extensions;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
+using System.Drawing.Imaging; //To take snapshot 
+using System.Windows.Forms; //Control window form/popup
+using OpenQA.Selenium.Firefox;
+using OpenQA.Selenium.IE;
+using OpenQA.Selenium.Chrome;
+
+namespace UnitTestGDSQEChallenge
+{
+    [TestClass]
+    public class UnitTest1
+    {
+        string baseURL01 = "http://localhost:8080/";
+		string baseURL01 = "http://localhost:8080/dispense";
+        string File = Directory.GetCurrentDirectory(); //Save the snapshot as file 
+        string timestamp = DateTime.Now.ToString("dd-MM-yyyy-hh-mm-ss");
+		
+		//To access Data Source
+        private TestContext testContextInstance;
+        public TestContext TestContext
+        { get { return testContextInstance; } set { testContextInstance = value; } } 
+        
+        [DataSource("Microsoft.VisualStudio.TestTools.DataSource.CSV", //Point to the data source file type, in this case is ".CSV"
+        "|DataDirectory|\\Valid Dataset.csv", "Valid Dataset#csv", //Access the file, in this case "Valid Dataset.csv"
+        DataAccessMethod.Sequential), //Define the reading method as Sequential
+        DeploymentItem("C:\\<the path of .CSV file is located>\\Valid Dataset.csv")] //Point to the path of CSV file located within project
+		
+        [TestMethod]
+        public void TestMethod01()
+        {
+            var pNatid = TestContext.DataRow["natid"].ToString();
+			var pName = TestContext.DataRow["name"].ToString();
+			var pGender = TestContext.DataRow["gender"].ToString();
+			var pSalary = TestContext.DataRow["salary"].ToString();
+			var pBrithday = TestContext.DataRow["birthday"].ToString();
+			var pTax = TestContext.DataRow["tax"].ToString();
+            
+            /*To declare Firefox driver
+            FirefoxDriverService service = FirefoxDriverService.CreateDefaultService(@"C:\<the path of Firefox driver is located>", "geckodriver.exe"); //Geckodriver is a driver that allows direct interaction between Selenium and Firefox browser
+            service.FirefoxBinaryPath = @"C:\Program Files (x86)\Mozilla Firefox\firefox.exe";
+            FirefoxDriver driver = new FirefoxDriver(service);
+             */
+
+            /*To declare IE driver
+            IWebDriver driver = new InternetExplorerDriver(@"C:\<the path of IE driver is located>");
+             */
+
+            //To declare Chrome driver
+            IWebDriver driver = new ChromeDriver(@"C:\<the path of Chrome driver is located>");
+			
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(15));
+
+            try
+            {  
+                driver.Manage().Window.Maximize(); //Maximize the window
+                driver.Navigate().GoToUrl(baseURL01);
+                Thread.Sleep(2000); //wait for 2 mins = 2000 milesecond
+				
+                //Wait the [Browse] button to display then only click it, and upload the CSV file
+                wait.Until(ExpectedConditions.ElementIsVisible(By.Class("custom-file-input"))); //"custom-file-input" is element of [Browse] button 
+                driver.FindElement(By.Class("custom-file-input")).SendKeys("C:\\<the path of valid dataset csv file is located>\\Valid Dataset.csv"); //Locate the csv file and upload 
+				Thread.Sleep(2000);			
+				string alertMsg1 = driver.SwitchTo().Alert().Text;
+                Assert.AreEqual("File uploaded successfully.", alertMsg1); //Textcheck the message content in alert popup
+				driver.SwitchTo().Alert().Accept(); //Click to accept the popup window
+				Thread.Sleep(1000);
+                
+                driver.FindElement(By.Class("btn.btn-primary")).Click(); //Find the element of [Refresh Tax Relief Table] button and click it 
+				//or driver.FindElement(By.XPath("//span[contains(@class,'btn.btn-primary')][contains(text(),'Refresh Tax Relief Table')]"));
+				Thread.Sleep(2000);
+				wait.Until(ExpectedConditions.ElementIsVisible(By.ClassName("display-4"))); //Wait the content "Total Tax Relieves" to display 
+				//or wait.Until(ExpectedConditions.ElementIsVisible(By.XPath("//span[contains(@class,'display-4')][contains(text(),'Total Tax Relieves')]")));
+				driver.FindElement(By.ClassName("btn.btn-danger.btn-block")).Click(); //Find the element of [Dispense Now] button and click it 
+				//or driver.FindElement(By.XPath("//span[contains(@class,'btn.btn-danger.btn-block')][contains(text(),'Dispense Now')]"));
+				Thread.Sleep(1000);
+				driver.Navigate().GoToUrl(baseURL02);          
+                driver.TakeScreenshot().SaveAsFile(File + "Pass-" + timestamp + ".Jpeg", System.Drawing.Imaging.ImageFormat.Jpeg); //Save the pass result with snapshot and timestamp 
+                driver.Quit(); //Same as driver.Close(), to close the window
+            }
+            catch (Exception Ex)
+            {
+                driver.TakeScreenshot().SaveAsFile(File + "Exception-" + timestamp + ".Jpeg", System.Drawing.Imaging.ImageFormat.Jpeg); //Save the fail result with snapshot and timestamp 
+                driver.Quit();
+                throw new Exception("TestMethod01:", Ex);
+            }
+        }
+    }
+}
